@@ -1,0 +1,164 @@
+{% extends "network/layout.html" %}
+
+{% block body %}
+<script>
+    document.addEventListener("DOMContentLoaded",()=>{
+        document.querySelectorAll(".edit").forEach((div) =>{
+                //alert(div.dataset.id);
+                div.addEventListener('click', edit);
+            });
+            function edit(event) {
+                event.preventDefault();
+                document.querySelectorAll(".edit").forEach((div) =>{
+                //alert(div.dataset.id);
+                    div.style.display = "none";
+                })
+                //alert("hi")
+                const div = event.target;
+                const post_id = div.dataset.id;
+                // console.log(post_id);
+                let content = document.querySelector(`#div${post_id}`).innerHTML;
+                const new_post = document.querySelector(`#new_${post_id}`);
+                const btn = document.querySelector(`#save_${post_id}`);
+                btn.style.display = "block";
+                new_post.style.display = "inline-block";
+                new_post.innerHTML = content;
+                btn.addEventListener("click",function() {
+                    if (new_post.value == "") {
+                        new_post.value = content;
+                    }
+                    document.querySelectorAll(".edit").forEach((div) =>{
+                        div.style.display = "block";
+                    })
+                    fetch(`/edit/post_${post_id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                        post: new_post.value
+                        })
+                    });
+                    btn.style.display = "none";
+                    new_post.style.display = "none";
+                    document.querySelector(`#div${post_id}`).innerHTML = new_post.value;
+                });
+            }
+        document.querySelectorAll(".like").forEach(i => {
+                i.addEventListener("click", function (){
+                    const element = event.target;
+                    const post_id = element.dataset.id;
+                    console.log("hi");
+                    event.preventDefault();
+                    let likes = parseInt(document.querySelector(`#num${post_id}`).innerHTML);
+                    document.querySelector(`#num${post_id}`).innerHTML = likes+1;
+                    element.style.display = "none";
+                    document.querySelector(`#u${post_id}`).style.display = "inline";
+                    fetch(`/like/post_${post_id}`, {
+                            method: 'PUT',
+                            body: JSON.stringify({
+                            post_id: post_id
+                            })
+                    });
+                });
+            })
+            document.querySelectorAll(".unlike").forEach(i =>{
+                    i.addEventListener("click", function (){
+                        const element = event.target;
+                        const post_id = element.dataset.id;
+                        console.log("unlike");
+                        event.preventDefault();
+                        //console.log(document.querySelector(`#${post_id}`).innerHTML);
+                        let likes = parseInt(document.querySelector(`#num${post_id}`).innerHTML);
+                        document.querySelector(`#num${post_id}`).innerHTML = likes - 1;
+                        element.style.display = "none";
+                        document.querySelector(`#l${post_id}`).style.display = "inline";
+                        fetch(`/unlike/post_${post_id}`, {
+                                method: 'PUT',
+                                body: JSON.stringify({
+                                post_id: post_id
+                                })
+                        });
+                });
+            });
+    });
+</script>
+<style>
+    .post {
+            border: 1px solid black;
+            border-radius: 5px;
+            width: 450px;
+            margin: 20px;
+            padding: 10px;
+        }
+        #container {
+            margin: auto;
+            width: 50%;
+            padding: 10px;
+            border-left: 1px solid black;
+            border-right: 1px solid black;;
+        }
+</style>
+<div style="margin-left: 10px;">
+    <h2>{{person}}</h2>
+    <strong>Follwers: </strong> {{followers}} <strong>Following: </strong> {{following}}
+    {% if not you %}
+        {% if not is_following %}
+            <form action="follow/{{person}}" method="POST">
+                {% csrf_token %}
+                <input class="btn btn-primary" style="margin-top: 10px;" type="submit" value="Follow">
+            </form>
+        {% else %}
+            <div style="font-size: large; color: red; margin: 10px;">Following</div>
+            <form action="unfollow/{{person}}" method="POST">
+                {% csrf_token %}
+                <input class="btn btn-primary" style="margin-top: 10px;" type="submit" value="Un Follow">
+            </form>
+        {% endif %}
+    {% endif %}
+</div>
+<div id="container">
+    {% for post in page_obj %}
+            <a href="http://127.0.0.1:8000/profile/{{post.post.user.username}}"><h5 style="margin-bottom: 5px;">{{post.post.user.username}}</h5></a>
+            <a href="http://127.0.0.1:8000/posts/{{post.post.id}}" style="text-decoration: none;">
+                <div class="post" style="margin-top: 0px;">
+                    <div id="div{{post.post.id}}">{{post.post.post}}</div>
+                    <div style="opacity: 0.5; text-align: right; text-align: right;">{{post.post.date}}</div>
+                </div>
+            </a>
+            <div style="margin-top: auto; margin-bottom: 10px; margin-left: 25px;">
+                {% if request.user == post.post.user %}
+                <div style="display: inline; margin-right: 40px;" class="edit" data-id="{{post.post.id}}">Edit</div>
+                {% endif%}
+                
+                {% if post.liked %}
+                    <div style="display: inline;" class="unlike"><i id="u{{post.post.id}}" data-id="{{post.post.id}}" style="color: blue;" class="fa fa-thumbs-up"></i></div>
+                    <div style=" display: inline;"  class="like"><i id="l{{post.post.id}}" data-id="{{post.post.id}}" style="display:none;" class="fa fa-thumbs-up"></i></div>
+                    
+                {% else %}
+                    <div style="display: inline;"  class="like" ><i id="l{{post.post.id}}" data-id="{{post.post.id}}"  class="fa fa-thumbs-up"></i></div>
+                    <div style="display: inline;"  class="unlike"><i id="u{{post.post.id}}" data-id="{{post.post.id}}" style="color: blue; display:none;" class="fa fa-thumbs-up"></i></div>
+                {% endif %}  
+                <div id="num{{post.post.id}}" style="display: inline;">{{post.num_likes}}</div>
+            </div>
+                    <textarea id="new_{{post.post.id}}" style="display:none; margin-left: 20px;" cols="30" rows="2"></textarea>
+                    <button class="btn btn-primary" id="save_{{post.post.id}}" style="display:none; margin-top: 10px; margin-left: 20px;">Update</button>
+        {% empty %}
+            <h5>No Posts</h5>
+        {% endfor %}
+    <div class="pagination">
+        <span class="step-links">
+            {% if page_obj.has_previous %}
+                <a href="?page=1">&laquo; first</a>
+                <a href="?page={{ page_obj.previous_page_number }}">previous</a>
+            {% endif %}
+    
+            <span class="current">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+            </span>
+    
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">next</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
+            {% endif %}
+        </span>
+    </div>
+</div>
+{% endblock %}

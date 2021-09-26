@@ -1,0 +1,132 @@
+{% extends "network/layout.html" %}
+
+{% block body %}
+    <script>
+        document.addEventListener("DOMContentLoaded",()=>{
+            document.querySelectorAll(".edit").forEach((div) =>{
+                //alert(div.dataset.id);
+                div.addEventListener('click', edit);
+            });
+            function edit(event) {
+                event.preventDefault();
+                document.querySelectorAll(".edit").forEach((div) =>{
+                //alert(div.dataset.id);
+                    div.style.display = "none";
+                })
+                //alert("hi")
+                const div = event.target;
+                const post_id = div.dataset.id;
+                // console.log(post_id);
+                let content = document.querySelector(`#div${post_id}`).innerHTML;
+                const new_post = document.querySelector(`#new_${post_id}`);
+                const btn = document.querySelector(`#save_${post_id}`);
+                btn.style.display = "block";
+                new_post.style.display = "inline-block";
+                new_post.innerHTML = content;
+                btn.addEventListener("click",function() {
+                    if (new_post.value == "") {
+                        new_post.value = content;
+                    }
+                    document.querySelectorAll(".edit").forEach((div) =>{
+                        div.style.display = "block";
+                    })
+                    fetch(`/edit/post_${post_id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                        post: new_post.value
+                        })
+                    });
+                    btn.style.display = "none";
+                    new_post.style.display = "none";
+                    document.querySelector(`#div${post_id}`).innerHTML = new_post.value;
+                });
+            }
+            document.querySelector("#like").addEventListener("click",function (){
+                event.preventDefault();
+                let likes = parseInt(document.querySelector("#num_likes").innerHTML);
+                const element = event.target;
+                const post_id = element.dataset.id;
+                document.querySelector("#num_likes").innerHTML = likes+1;
+                element.style.display = "none";
+                document.querySelector("#unlike").style.display = "inline";
+                fetch(`/like/post_${post_id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                        post_id: post_id
+                        })
+                });
+            });
+
+            document.querySelector("#unlike").addEventListener("click",function (){
+                event.preventDefault();
+                let likes = parseInt(document.querySelector("#num_likes").innerHTML);
+                const element = event.target;
+                const post_id = element.dataset.id;
+                document.querySelector("#num_likes").innerHTML = likes - 1;
+                element.style.display = "none";
+                document.querySelector("#like").style.display = "inline";
+                fetch(`/unlike/post_${post_id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                        post_id: post_id
+                        })
+                });
+            });
+        });
+    </script>
+    <style>
+        #container {
+            margin: auto;
+            width: 50%;
+            padding: 10px;
+            border-left: 1px solid black;
+            border-right: 1px solid black; 
+        }
+    </style>
+    <div id="container">
+        <a href="http://127.0.0.1:8000/profile/{{post.user.username}}"><h5 style="margin-bottom: 5px;">{{post.user.username}}</h5></a>
+                <div class="post" style="margin-top: 0px;">
+                    <div id="div{{post.id}}">{{post.post}}</div>
+                    <div style="opacity: 0.5; text-align: right;">{{post.date}}</div>
+                    {% if request.user == post.user %}
+                        <div class="edit"  data-id="{{post.id}}">Edit</div>
+                    {% endif%}
+                    {% if liked %}
+                        <i id="unlike" data-id="{{post.id}}" style="color: blue;" class="fa fa-thumbs-up"></i>
+                        <i id="like" data-id="{{post.id}}" style="display:none;" class="fa fa-thumbs-up"></i>
+                    {% else %}
+                        <i id="like" data-id="{{post.id}}"  class="fa fa-thumbs-up"></i>
+                        <i id="unlike" data-id="{{post.id}}" style="color: blue; display:none;" class="fa fa-thumbs-up"></i>
+                    {% endif %}  
+                    <div id="num_likes" style="display: inline;">{{num_likes}}</div>
+                </div>
+                <hr>
+        <textarea id="new_{{post.id}}" style="display:none; margin-left: 20px;" cols="30" rows="2"></textarea>
+        <button class="btn btn-primary" id="save_{{post.id}}" style="display:none; margin-top: 10px; margin-left: 20px;">Update</button>
+        <div id="comments">
+            <strong>Comments:</strong><br>
+            {% for comment in comments %}
+                <a href="http://127.0.0.1:8000/profile/{{comment.user.username}}"><strong style="margin-bottom: 5px;">{{comment.user.username}}</strong></a>
+                <div id="comment_content">{{comment.comment}}</div>
+                <div style="opacity: 0.5; text-align: right;">{{comment.date}}</div>
+                <hr>
+            {% empty %}
+            <div class="alert alert-info" role="alert">
+                Be the first to comment on this post
+            </div>
+            {% endfor %}
+            <div id="add_comment">
+                {% if error %}
+                    <div class="alert alert-danger" role="alert">You can't add Empty Comment!!</div>
+                {% endif %}
+                <form action="{% url 'add_comment' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" value="{{post.id}}" name="post_id">
+                    <textarea name="comment" id="new_comment" cols="85" class="form-control" rows="1" placeholder="Comment"></textarea><br>
+                    <input type="submit" class="btn btn-primary"  value="Add Comment">
+                </form>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
